@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Weather</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  --bg: #eef1f5;
+  --surface: #ffffff;
+  --text: #16202e;
+  --muted: #5d6b7e;
+  --line: #d9dfe8;
+  --accent: #1f5fd1;
+  --bar: #c9d3e2;
+  --display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e141d;
+    --surface: #17202c;
+    --text: #e8edf4;
+    --muted: #93a1b5;
+    --line: #26323f;
+    --accent: #7aa7ff;
+    --bar: #2b3848;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e141d;
+  --surface: #17202c;
+  --text: #e8edf4;
+  --muted: #93a1b5;
+  --line: #26323f;
+  --accent: #7aa7ff;
+  --bar: #2b3848;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px 16px 40px;
+}
+.topbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.cities {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.cities::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: 500 14px var(--body);
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.chip[aria-pressed="true"] {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+.units {
+  flex: none;
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.units button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 600 14px var(--body);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.units button[aria-pressed="true"] {
+  background: var(--accent);
+  color: #fff;
+}
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.sky {
+  --sky-a: #f6b45c;
+  --sky-b: #3f84d8;
+  position: relative;
+  border-radius: 28px;
+  padding: 28px 24px 24px;
+  color: #fff;
+  background: linear-gradient(165deg, var(--sky-a), var(--sky-b));
+  overflow: hidden;
+  transition: background 0.4s ease;
+}
+.sky[data-sky="cloudy"] { --sky-a: #9aa7ba; --sky-b: #4e5b70; }
+.sky[data-sky="rain"] { --sky-a: #5b7fb3; --sky-b: #1f3050; }
+.sky[data-sky="storm"] { --sky-a: #5a5f7d; --sky-b: #1a1d33; }
+.sky[data-sky="snow"] { --sky-a: #b7cde6; --sky-b: #5f7fa6; }
+.sky h1 {
+  font: 500 22px var(--display);
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.sky .when {
+  margin: 2px 0 0;
+  font-size: 14px;
+  opacity: 0.85;
+}
+.now {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+.temp {
+  font: 700 clamp(88px, 28vw, 132px) / 0.9 var(--display);
+  letter-spacing: -0.04em;
+  display: flex;
+}
+.temp sup {
+  font-size: 0.35em;
+  font-weight: 500;
+  margin-top: 0.12em;
+  letter-spacing: 0;
+}
+.glyph {
+  font-size: clamp(56px, 16vw, 84px);
+  line-height: 1;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.25));
+}
+.summary {
+  margin: 16px 0 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+.range {
+  margin: 2px 0 0;
+  font-size: 14px;
+  opacity: 0.85;
+}
+.panel {
+  margin-top: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 18px 18px 16px;
+}
+.panel h2 {
+  margin: 0 0 12px;
+  font: 700 17px var(--display);
+}
+.curve-wrap {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.curve-wrap svg {
+  display: block;
+  min-width: 720px;
+  width: 100%;
+  height: auto;
+}
+.curve-wrap text {
+  font: 500 12px var(--body);
+  fill: var(--muted);
+}
+.curve-wrap text.val {
+  fill: var(--text);
+  font-weight: 600;
+}
+.days {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.day {
+  display: grid;
+  grid-template-columns: 52px 32px 38px 1fr 38px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.day:first-child { border-top: 0; }
+.day .name { font-weight: 600; }
+.day .lo { color: var(--muted); text-align: right; }
+.day .hi { text-align: right; font-weight: 600; }
+.track {
+  position: relative;
+  height: 6px;
+  border-radius: 6px;
+  background: var(--bar);
+}
+.fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #5aa0ff, #ffb050);
+}
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+.fact {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 16px;
+}
+.fact dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+.fact dd {
+  margin: 2px 0 0;
+  font: 700 24px var(--display);
+}
+.fact small {
+  font: 500 13px var(--body);
+  color: var(--muted);
+}
+.note {
+  margin: 18px 4px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sky { transition: none; }
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="topbar">
+    <div class="cities" id="cities" role="group" aria-label="Choose a city"></div>
+    <div class="units" role="group" aria-label="Temperature unit">
+      <button type="button" id="unitC" aria-pressed="true">°C</button>
+      <button type="button" id="unitF" aria-pressed="false">°F</button>
+    </div>
+  </div>
+
+  <section class="sky" id="sky" aria-live="polite">
+    <h1 id="cityName"></h1>
+    <p class="when" id="when"></p>
+    <div class="now">
+      <div class="temp"><span id="tempNow"></span><sup id="unitMark"></sup></div>
+      <div class="glyph" id="glyph" aria-hidden="true"></div>
+    </div>
+    <p class="summary" id="summary"></p>
+    <p class="range" id="range"></p>
+  </section>
+
+  <section class="panel">
+    <h2>Next 24 hours</h2>
+    <div class="curve-wrap"><svg id="curve" viewBox="0 0 720 170" role="img" aria-label="Hourly temperature"></svg></div>
+  </section>
+
+  <section class="panel">
+    <h2>5-day forecast</h2>
+    <ul class="days" id="days"></ul>
+  </section>
+
+  <dl class="facts" id="facts"></dl>
+
+  <p class="note">Sample data for five cities. Hosted pages can't call live weather services, so these values are built into the page.</p>
+</main>
+
+<script>
+const CITIES = {
+  Tbilisi: { base: 17, amp: 6, sky: "sunny", feels: -1, humidity: 48, wind: 9, uv: 5, tz: 4, week: [["sunny", 4], ["sunny", 3], ["cloudy", 1], ["rain", -3], ["cloudy", -1]] },
+  London: { base: 13, amp: 3, sky: "cloudy", feels: -2, humidity: 76, wind: 17, uv: 2, tz: 1, week: [["cloudy", 1], ["rain", -1], ["rain", -2], ["cloudy", 0], ["sunny", 2]] },
+  Tokyo: { base: 21, amp: 4, sky: "rain", feels: 1, humidity: 82, wind: 12, uv: 3, tz: 9, week: [["rain", 0], ["storm", -1], ["cloudy", 1], ["sunny", 3], ["sunny", 3]] },
+  "New York": { base: 15, amp: 5, sky: "sunny", feels: -1, humidity: 55, wind: 14, uv: 4, tz: -4, week: [["sunny", 2], ["cloudy", 0], ["cloudy", -2], ["rain", -3], ["sunny", 1]] },
+  Sydney: { base: 22, amp: 4, sky: "cloudy", feels: 0, humidity: 63, wind: 20, uv: 7, tz: 11, week: [["cloudy", 0], ["sunny", 2], ["sunny", 3], ["storm", -2], ["rain", -3]] }
+};
+
+const SKY = {
+  sunny: { glyph: "☀️", label: "Sunny", lift: 3 },
+  cloudy: { glyph: "☁️", label: "Cloudy", lift: -1 },
+  rain: { glyph: "🌧️", label: "Rain", lift: -3 },
+  storm: { glyph: "⛈️", label: "Thunderstorms", lift: -4 },
+  snow: { glyph: "❄️", label: "Snow", lift: -8 }
+};
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const state = { city: "Tbilisi", unit: "C" };
+
+const $ = (id) => document.getElementById(id);
+
+function convert(c) {
+  return state.unit === "C" ? c : c * 9 / 5 + 32;
+}
+
+function fmt(c) {
+  return Math.round(convert(c));
+}
+
+function localNow(city) {
+  const utc = Date.now() + new Date().getTimezoneOffset() * 60000;
+  return new Date(utc + CITIES[city].tz * 3600000);
+}
+
+function hourTemp(city, hour) {
+  const d = CITIES[city];
+  const lift = SKY[d.sky].lift * 0.2;
+  return d.base + lift + d.amp * Math.sin((hour - 9) * Math.PI / 12);
+}
+
+function renderCities() {
+  const box = $("cities");
+  box.innerHTML = "";
+  Object.keys(CITIES).forEach((name) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.textContent = name;
+    b.setAttribute("aria-pressed", String(name === state.city));
+    b.addEventListener("click", () => {
+      state.city = name;
+      render();
+    });
+    box.appendChild(b);
+  });
+}
+
+function renderHero() {
+  const d = CITIES[state.city];
+  const now = localNow(state.city);
+  const hour = now.getHours();
+  const temps = Array.from({ length: 24 }, (_, h) => hourTemp(state.city, h));
+  const cur = hourTemp(state.city, hour + now.getMinutes() / 60);
+  $("sky").dataset.sky = d.sky;
+  $("cityName").textContent = state.city;
+  $("when").textContent = now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }) +
+    ", " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  $("tempNow").textContent = fmt(cur);
+  $("unitMark").textContent = "°" + state.unit;
+  $("glyph").textContent = SKY[d.sky].glyph;
+  $("summary").textContent = SKY[d.sky].label + ", feels like " + fmt(cur + d.feels) + "°";
+  $("range").textContent = "High " + fmt(Math.max(...temps)) + "°  Low " + fmt(Math.min(...temps)) + "°";
+}
+
+function renderCurve() {
+  const now = localNow(state.city);
+  const startHour = now.getHours();
+  const points = Array.from({ length: 24 }, (_, i) => {
+    const h = (startHour + i) % 24;
+    return { h, t: hourTemp(state.city, h) };
+  });
+  const W = 720, top = 34, bottom = 118, left = 24, right = 24;
+  const lo = Math.min(...points.map((p) => p.t));
+  const hi = Math.max(...points.map((p) => p.t));
+  const span = Math.max(hi - lo, 1);
+  const step = (W - left - right) / 23;
+  const xy = points.map((p, i) => [left + i * step, bottom - ((p.t - lo) / span) * (bottom - top)]);
+  const line = xy.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  const area = line + " L" + xy[23][0].toFixed(1) + " 140 L" + xy[0][0].toFixed(1) + " 140 Z";
+  let out = '<defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0" stop-color="#ffb050" stop-opacity="0.35"/>' +
+    '<stop offset="1" stop-color="#5aa0ff" stop-opacity="0"/></linearGradient></defs>';
+  out += '<path d="' + area + '" fill="url(#fade)"/>';
+  out += '<path d="' + line + '" fill="none" stroke="#ff9a3c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+  points.forEach((p, i) => {
+    if (i % 3 !== 0) return;
+    const label = p.h === 0 ? "12 AM" : p.h === 12 ? "12 PM" : p.h > 12 ? (p.h - 12) + " PM" : p.h + " AM";
+    out += '<circle cx="' + xy[i][0].toFixed(1) + '" cy="' + xy[i][1].toFixed(1) + '" r="4.5" fill="var(--surface)" stroke="#ff9a3c" stroke-width="2.5"/>';
+    out += '<text class="val" x="' + xy[i][0].toFixed(1) + '" y="' + (xy[i][1] - 12).toFixed(1) + '" text-anchor="middle">' + fmt(p.t) + '°</text>';
+    out += '<text x="' + xy[i][0].toFixed(1) + '" y="160" text-anchor="middle">' + (i === 0 ? "Now" : label) + '</text>';
+  });
+  $("curve").innerHTML = out;
+}
+
+function renderDays() {
+  const d = CITIES[state.city];
+  const now = localNow(state.city);
+  const rows = d.week.map(([sky, shift], i) => {
+    const date = new Date(now.getTime() + i * 86400000);
+    const hi = d.base + d.amp * 0.75 + shift + SKY[sky].lift * 0.2;
+    const lo = d.base - d.amp * 0.85 + shift + SKY[sky].lift * 0.2;
+    return { name: i === 0 ? "Today" : WEEKDAYS[date.getDay()], sky, hi, lo };
+  });
+  const min = Math.min(...rows.map((r) => r.lo));
+  const max = Math.max(...rows.map((r) => r.hi));
+  const span = max - min;
+  $("days").innerHTML = rows.map((r) => {
+    const left = ((r.lo - min) / span) * 100;
+    const width = ((r.hi - r.lo) / span) * 100;
+    return '<li class="day"><span class="name">' + r.name + '</span>' +
+      '<span aria-label="' + SKY[r.sky].label + '">' + SKY[r.sky].glyph + '</span>' +
+      '<span class="lo">' + fmt(r.lo) + '°</span>' +
+      '<span class="track"><span class="fill" style="left:' + left.toFixed(1) + '%;width:' + width.toFixed(1) + '%"></span></span>' +
+      '<span class="hi">' + fmt(r.hi) + '°</span></li>';
+  }).join("");
+}
+
+function renderFacts() {
+  const d = CITIES[state.city];
+  const wind = state.unit === "C" ? d.wind + " <small>km/h</small>" : Math.round(d.wind * 0.621) + " <small>mph</small>";
+  const uvLevel = d.uv <= 2 ? "Low" : d.uv <= 5 ? "Moderate" : d.uv <= 7 ? "High" : "Very high";
+  const items = [
+    ["Humidity", d.humidity + "<small>%</small>"],
+    ["Wind", wind],
+    ["UV index", d.uv + " <small>" + uvLevel + "</small>"],
+    ["Feels like", fmt(hourTemp(state.city, localNow(state.city).getHours()) + d.feels) + "°"]
+  ];
+  $("facts").innerHTML = items.map(([k, v]) => '<div class="fact"><dt>' + k + '</dt><dd>' + v + '</dd></div>').join("");
+}
+
+function renderUnits() {
+  $("unitC").setAttribute("aria-pressed", String(state.unit === "C"));
+  $("unitF").setAttribute("aria-pressed", String(state.unit === "F"));
+}
+
+function render() {
+  renderCities();
+  renderUnits();
+  renderHero();
+  renderCurve();
+  renderDays();
+  renderFacts();
+}
+
+$("unitC").addEventListener("click", () => { state.unit = "C"; render(); });
+$("unitF").addEventListener("click", () => { state.unit = "F"; render(); });
+
+render();
+</script>
+</body>
+</html>
